@@ -1,19 +1,18 @@
 """
-model.py — Il modello (PASSO 1)
+model.py — Il modello (PASSO 2)
 ================================
 
-PASSO 1: spezziamo il percorso diretto "token -> logit" del bigram in:
-    token -> rappresentazione ricca (n_embd) -> logit
+PASSO 2: aggiungiamo il POSITIONAL EMBEDDING.
 
-Due novita' rispetto al bigram:
-  1. nn.Embedding(vocab_size, n_embd): il token diventa un vettore astratto
-     di n_embd numeri, NON piu' i logit diretti.
-  2. nn.Linear(n_embd, vocab_size): un "traduttore" finale che converte
-     la rappresentazione in logit sul vocabolario.
+Oltre a "quale carattere e'" (token embedding), il modello ora sa anche
+"in quale posizione si trova" (positional embedding). I due vengono sommati:
 
-ATTENZIONE: questo passo da solo NON migliora la loss. Il modello guarda
-ancora un solo token. Serve a creare lo "spazio in mezzo" (la rappresentazione)
-dove ai prossimi passi inseriremo la self-attention.
+    rappresentazione = embedding_del_carattere + embedding_della_posizione
+
+Perche'? La self-attention (Passo 3) avra' bisogno di distinguere l'ordine
+dei caratteri. Senza posizione, "vita" e "tavi" sarebbero indistinguibili.
+
+Come il Passo 1, da solo questo cambia poco nei numeri: e' preparatorio.
 """
 
 import torch
@@ -23,45 +22,47 @@ import torch.nn.functional as F
 
 class BigramLanguageModel(nn.Module):
     """
-    Language model con embedding ricco + output head lineare.
-
-    Manteniamo il nome 'BigramLanguageModel' per ora perche', a livello di
-    capacita', e' ancora un bigram (guarda un solo token). Lo rinomineremo
-    quando aggiungeremo la self-attention e diventera' un vero mini-GPT.
+    Language model con token embedding + positional embedding + output head.
     """
 
-    def __init__(self, vocab_size, n_embd):
+    def __init__(self, vocab_size, n_embd, block_size):
         super().__init__()
-        # NOVITA' 1: embedding ricco. Ogni token -> vettore di n_embd numeri.
-        # Prima era (vocab_size, vocab_size); ora (vocab_size, n_embd).
+        self.block_size = block_size
+
+        # Embedding del CARATTERE: "quale token sono" -> vettore n_embd
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
 
-        # NOVITA' 2: output head. Traduce la rappresentazione (n_embd numeri)
-        # nei logit finali (vocab_size numeri).
+        # NOVITA': embedding della POSIZIONE: "dove mi trovo" -> vettore n_embd
+        # Ha una riga per ogni posizione possibile (0 ... block_size-1)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
+
+        # Output head: rappresentazione (n_embd) -> logit (vocab_size)
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
-        """
-        Args:
-            idx:     (B, T) indici dei token di input
-            targets: (B, T) indici target (opzionale)
+        B, T = idx.shape
 
-        Returns:
-            logits: (B, T, vocab_size)
-            loss:   scalare se ci sono targets, altrimenti None
-        """
-        # idx (B, T) -> embedding -> (B, T, n_embd)
-        # Questa e' la rappresentazione ricca: lo "spazio in mezzo".
-        # NOTA: qui, ai prossimi passi, andranno attention e feed-forward.
-        tok_emb = self.token_embedding_table(idx)  # (B, T, n_embd)
+        # Embedding del carattere: (B, T) -> (B, T, n_embd)
+        tok_emb = self.token_embedding_table(idx)
 
-        # rappresentazione -> output head -> logit (B, T, vocab_size)
-        logits = self.lm_head(tok_emb)  # (B, T, vocab_size)
+        # NOVITA': embedding della posizione.
+        # Creiamo gli indici di posizione [0, 1, 2, ..., T-1] e li mappiamo.
+        # Risultato: (T, n_embd) — un vettore per ogni posizione.
+        pos = torch.arange(T, device=idx.device)
+        pos_emb = self.position_embedding_table(pos)  # (T, n_embd)
+
+        # Somma carattere + posizione.
+        # pos_emb (T, n_embd) viene "broadcast" su tutte le B sequenze.
+        x = tok_emb + pos_emb  # (B, T, n_embd)
+
+        # NOTA: qui, al Passo 3, andra' la self-attention (operera' su x)
+
+        # Output head -> logit
+        logits = self.lm_head(x)  # (B, T, vocab_size)
 
         if targets is None:
             loss = None
         else:
-            # Appiattiamo per cross_entropy: (B*T, vocab_size) e (B*T,)
             B, T, C = logits.shape
             logits = logits.view(B * T, C)
             targets = targets.view(B * T)
@@ -71,10 +72,18 @@ class BigramLanguageModel(nn.Module):
 
     @torch.no_grad()
     def generate(self, idx, max_new_tokens):
-        """Genera testo autoregressivamente (identico al bigram)."""
+        """
+        Genera testo autoregressivamente.
+
+        NOVITA': dobbiamo limitare il contesto a block_size token, perche'
+        la tabella di posizione ha solo block_size righe. Se la sequenza
+        cresce oltre, teniamo solo gli ultimi block_size caratteri.
+        """
         for _ in range(max_new_tokens):
-            logits, _ = self(idx)            # forward pass
-            logits = logits[:, -1, :]        # ultima posizione -> (B, vocab_size)
+            # Taglia il contesto agli ultimi block_size token
+            idx_cond = idx[:, -self.block_size:]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :]
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
             idx = torch.cat((idx, idx_next), dim=1)
