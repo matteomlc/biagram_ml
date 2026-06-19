@@ -4,12 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1afb6767-2f94-450e-950e-a1f543d22b5d" name="Changes" comment="Created project about Biagram Language Model">
+    <list default="true" id="1afb6767-2f94-450e-950e-a1f543d22b5d" name="Changes" comment="Added logger system">
+      <change afterPath="$PROJECT_DIR$/checkpoint.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,18 +18,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "matteomlc"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;matteomlc&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/matteomlc/biagram_ml.git",
-    "accountId": "be65ec88-60ee-4cb9-84a9-71ebe6d9eec8"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/matteomlc/biagram_ml.git&quot;,
+    &quot;accountId&quot;: &quot;be65ec88-60ee-4cb9-84a9-71ebe6d9eec8&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
 }</component>
@@ -46,7 +45,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "SONARLINT_PRECOMMIT_ANALYSIS": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/matteomullace/Documents/pers/proj/python/ML/biagram_ml"
+    "last_opened_file_path": "/Users/matteomullace/Documents/pers/proj/python/ML/bigram_ml"
   }
 }]]></component>
   <component name="RecentsManager">
@@ -77,7 +76,23 @@
       <option name="project" value="LOCAL" />
       <updated>1781798317355</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Modified tokenization logic: token is an abstract vector, no longer direct logits">
+      <option name="closed" value="true" />
+      <created>1781860643748</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1781860643748</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Added logger system">
+      <option name="closed" value="true" />
+      <created>1781860818590</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1781860818590</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -93,6 +108,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created project about Biagram Language Model" />
-    <option name="LAST_COMMIT_MESSAGE" value="Created project about Biagram Language Model" />
+    <MESSAGE value="Modified tokenization logic: token is an abstract vector, no longer direct logits" />
+    <MESSAGE value="Added logger system" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added logger system" />
   </component>
 </project>

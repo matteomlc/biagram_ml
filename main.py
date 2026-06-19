@@ -74,7 +74,7 @@ def main():
     # ========================================================================
 
     # --- Dati e tokenizer ---
-    text = load_text(path=None, fallback=SAMPLE_TEXT)
+    text = load_text(path="commedia.txt", fallback=SAMPLE_TEXT)
     tokenizer = CharTokenizer(text)
     tokenizer.summary()
 
