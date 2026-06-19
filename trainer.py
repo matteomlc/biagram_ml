@@ -31,9 +31,14 @@ def estimate_loss(model, dataset, eval_iters):
     return out
 
 
-def train(model, dataset, max_steps, eval_interval, eval_iters, learning_rate):
+def train(model, dataset, max_steps, eval_interval, eval_iters, learning_rate,
+          logger=None):
     """
     Addestra il modello.
+
+    Args:
+        logger: un RunLogger opzionale. Se fornito, registra le loss
+                ad ogni eval_interval per il tracciamento su file.
 
     Returns:
         first_loss: la loss al primo step (utile per il sanity check)
@@ -48,6 +53,8 @@ def train(model, dataset, max_steps, eval_interval, eval_iters, learning_rate):
             losses = estimate_loss(model, dataset, eval_iters)
             print(f"Step {step:5d} | train loss: {losses['train']:.4f} "
                   f"| val loss: {losses['val']:.4f}")
+            if logger is not None:
+                logger.log_loss(step, losses['train'], losses['val'])
 
         # --- Il training step: il cuore di tutto ---
         xb, yb = dataset.get_batch("train")   # 1. campiona un batch
@@ -63,5 +70,7 @@ def train(model, dataset, max_steps, eval_interval, eval_iters, learning_rate):
     losses = estimate_loss(model, dataset, eval_iters)
     print(f"Step {max_steps:5d} | train loss: {losses['train']:.4f} "
           f"| val loss: {losses['val']:.4f}")
+    if logger is not None:
+        logger.log_loss(max_steps, losses['train'], losses['val'])
 
     return first_loss

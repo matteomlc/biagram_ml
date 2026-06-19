@@ -25,6 +25,12 @@ TRAIN_SPLIT = 0.9      # Frazione di dati usata per il training (resto: validati
 # --- Riproducibilità ---
 SEED = 42              # Seed per risultati riproducibili
 
+# --- Tracciamento ---
+RUN_NOTES = "Passo 1 - embedding ricco + output head lineare"  # descrizione del run
+
+# --- Salvataggio modello ---
+CHECKPOINT_PATH = "modello.pt"   # dove salvare/caricare i pesi del modello
+
 # --- Generazione ---
 GEN_TOKENS_BEFORE = 200   # Caratteri da generare prima del training (gibberish)
 GEN_TOKENS_AFTER = 500    # Caratteri da generare dopo il training
