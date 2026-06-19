@@ -11,6 +11,22 @@ Tiene insieme i dati e la logica per pescarne dei pezzetti (get_batch).
 import torch
 
 
+def load_text(path=None, fallback=None):
+    """
+    Carica il testo da un file, oppure usa un testo di fallback.
+
+    Args:
+        path: percorso a un file .txt (es. "divina_commedia.txt")
+        fallback: testo da usare se path e' None o il file non esiste
+    """
+    if path is not None:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            print(f"File '{path}' non trovato, uso il testo di fallback.")
+    return fallback
+
 class Dataset:
     """
     Contiene i dati tokenizzati e li divide in train/validation.

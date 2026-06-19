@@ -1,12 +1,19 @@
 """
-model.py — Il modello
-=======================
+model.py — Il modello (PASSO 1)
+================================
 
-Contiene la definizione dell'architettura: il BigramLanguageModel.
+PASSO 1: spezziamo il percorso diretto "token -> logit" del bigram in:
+    token -> rappresentazione ricca (n_embd) -> logit
 
-Questo e' il file che modificherai quando passerai al Transformer:
-basta sostituire/estendere questa classe, tutto il resto del progetto
-(training, dati, tokenizer) resta invariato.
+Due novita' rispetto al bigram:
+  1. nn.Embedding(vocab_size, n_embd): il token diventa un vettore astratto
+     di n_embd numeri, NON piu' i logit diretti.
+  2. nn.Linear(n_embd, vocab_size): un "traduttore" finale che converte
+     la rappresentazione in logit sul vocabolario.
+
+ATTENZIONE: questo passo da solo NON migliora la loss. Il modello guarda
+ancora un solo token. Serve a creare lo "spazio in mezzo" (la rappresentazione)
+dove ai prossimi passi inseriremo la self-attention.
 """
 
 import torch
@@ -16,39 +23,45 @@ import torch.nn.functional as F
 
 class BigramLanguageModel(nn.Module):
     """
-    Il language model piu' semplice possibile.
+    Language model con embedding ricco + output head lineare.
 
-    Architettura: una singola tabella di embedding (vocab_size x vocab_size).
-    La riga di ogni token E' GIA' la previsione (i logit) del prossimo token.
-    Guarda solo l'ultimo carattere — nessuna memoria del contesto piu' ampio.
+    Manteniamo il nome 'BigramLanguageModel' per ora perche', a livello di
+    capacita', e' ancora un bigram (guarda un solo token). Lo rinomineremo
+    quando aggiungeremo la self-attention e diventera' un vero mini-GPT.
     """
 
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size, n_embd):
         super().__init__()
-        # L'unica componente: embedding che mappa ogni token ai logit
-        # del prossimo token. Forma: (vocab_size, vocab_size)
-        self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
+        # NOVITA' 1: embedding ricco. Ogni token -> vettore di n_embd numeri.
+        # Prima era (vocab_size, vocab_size); ora (vocab_size, n_embd).
+        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+
+        # NOVITA' 2: output head. Traduce la rappresentazione (n_embd numeri)
+        # nei logit finali (vocab_size numeri).
+        self.lm_head = nn.Linear(n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
         """
-        Forward pass.
-
         Args:
             idx:     (B, T) indici dei token di input
-            targets: (B, T) indici dei token target (opzionale)
+            targets: (B, T) indici target (opzionale)
 
         Returns:
-            logits: (B, T, C) punteggi sul prossimo token
-            loss:   scalare se ci sono i targets, altrimenti None
+            logits: (B, T, vocab_size)
+            loss:   scalare se ci sono targets, altrimenti None
         """
-        # Embedding lookup: ogni token -> riga di logit
-        logits = self.token_embedding_table(idx)  # (B, T, C)
+        # idx (B, T) -> embedding -> (B, T, n_embd)
+        # Questa e' la rappresentazione ricca: lo "spazio in mezzo".
+        # NOTA: qui, ai prossimi passi, andranno attention e feed-forward.
+        tok_emb = self.token_embedding_table(idx)  # (B, T, n_embd)
+
+        # rappresentazione -> output head -> logit (B, T, vocab_size)
+        logits = self.lm_head(tok_emb)  # (B, T, vocab_size)
 
         if targets is None:
             loss = None
         else:
-            # cross_entropy vuole logits (N, C) e targets (N,)
-            # quindi appiattiamo le prime due dimensioni
+            # Appiattiamo per cross_entropy: (B*T, vocab_size) e (B*T,)
             B, T, C = logits.shape
             logits = logits.view(B * T, C)
             targets = targets.view(B * T)
@@ -58,24 +71,14 @@ class BigramLanguageModel(nn.Module):
 
     @torch.no_grad()
     def generate(self, idx, max_new_tokens):
-        """
-        Genera testo autoregressivamente, un token alla volta.
-
-        Args:
-            idx: (B, T) contesto iniziale
-            max_new_tokens: quanti token generare
-
-        Returns:
-            (B, T + max_new_tokens) la sequenza estesa
-        """
+        """Genera testo autoregressivamente (identico al bigram)."""
         for _ in range(max_new_tokens):
             logits, _ = self(idx)            # forward pass
-            logits = logits[:, -1, :]        # solo l'ultima posizione -> (B, C)
-            probs = F.softmax(logits, dim=-1)  # logit -> probabilita'
-            idx_next = torch.multinomial(probs, num_samples=1)  # campiona
-            idx = torch.cat((idx, idx_next), dim=1)  # concatena
+            logits = logits[:, -1, :]        # ultima posizione -> (B, vocab_size)
+            probs = F.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, idx_next), dim=1)
         return idx
 
     def num_params(self):
-        """Conta i parametri totali del modello."""
         return sum(p.numel() for p in self.parameters())
