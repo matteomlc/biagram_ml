@@ -34,7 +34,7 @@ class Head(nn.Module):
     dalle posizioni precedenti.
     """
 
-    def __init__(self, n_embd, head_size, block_size):
+    def __init__(self, n_embd, head_size, block_size, dropout):
         super().__init__()
         # Le tre proiezioni lineari apprese. Niente bias, come da prassi.
         # Ognuna trasforma un vettore da n_embd a head_size numeri.
@@ -47,6 +47,10 @@ class Head(nn.Module):
         # i token FUTURI. La registriamo come "buffer" (non e' un parametro
         # apprendibile, ma deve seguire il modello su CPU/GPU).
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+
+        # DROPOUT sui pesi di attenzione: spegne casualmente una frazione delle
+        # connessioni di attenzione durante il training.
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # x: (B, T, n_embd) — B sequenze, T token, n_embd numeri per token
@@ -77,6 +81,7 @@ class Head(nn.Module):
         # 4. Softmax sull'ultima dimensione: i punteggi diventano pesi che
         # sommano a 1 (per ogni token, una distribuzione su quelli precedenti).
         weights = F.softmax(scores, dim=-1)  # (B, T, T)
+        weights = self.dropout(weights)      # DROPOUT sui pesi di attenzione
 
         # 5. Media pesata dei value: ogni token diventa la combinazione pesata
         # dei value dei token a cui presta attenzione.
@@ -92,15 +97,17 @@ class MultiHeadAttention(nn.Module):
     da head_size ciascuno, si torna a num_heads * head_size = n_embd.
     """
 
-    def __init__(self, num_heads, n_embd, head_size, block_size):
+    def __init__(self, num_heads, n_embd, head_size, block_size, dropout):
         super().__init__()
         # Una lista di head indipendenti. nn.ModuleList registra correttamente
         # i parametri di ciascun head (a differenza di una lista Python normale).
         self.heads = nn.ModuleList([
-            Head(n_embd, head_size, block_size) for _ in range(num_heads)
+            Head(n_embd, head_size, block_size, dropout) for _ in range(num_heads)
         ])
         # Una proiezione lineare che "rimescola" gli output concatenati dei head.
         self.proj = nn.Linear(num_heads * head_size, n_embd)
+        # DROPOUT all'uscita della multi-head.
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # Esegue ogni head e concatena i risultati lungo l'ultima dimensione.
@@ -108,6 +115,7 @@ class MultiHeadAttention(nn.Module):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
         # La proiezione finale ricombina le informazioni dei vari head.
         out = self.proj(out)  # (B, T, n_embd)
+        out = self.dropout(out)  # DROPOUT
         return out
 
 
@@ -121,12 +129,13 @@ class FeedForward(nn.Module):
     i token tra loro: quello e' compito dell'attention).
     """
 
-    def __init__(self, n_embd):
+    def __init__(self, n_embd, dropout):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),   # espande
             nn.ReLU(),                       # non linearita'
             nn.Linear(4 * n_embd, n_embd),   # riporta a n_embd
+            nn.Dropout(dropout),             # DROPOUT in uscita
         )
 
     def forward(self, x):
@@ -144,11 +153,11 @@ class Block(nn.Module):
         x = x + feed_forward( norm2(x) )
     """
 
-    def __init__(self, n_embd, n_head, block_size):
+    def __init__(self, n_embd, n_head, block_size, dropout):
         super().__init__()
         head_size = n_embd // n_head
-        self.sa = MultiHeadAttention(n_head, n_embd, head_size, block_size)
-        self.ffwd = FeedForward(n_embd)
+        self.sa = MultiHeadAttention(n_head, n_embd, head_size, block_size, dropout)
+        self.ffwd = FeedForward(n_embd, dropout)
         # Due layer norm: una prima dell'attention, una prima della feed-forward.
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
@@ -165,7 +174,7 @@ class BigramLanguageModel(nn.Module):
     Ora con un head di self-attention tra l'embedding e l'output head.
     """
 
-    def __init__(self, vocab_size, n_embd, block_size, n_head, n_layer):
+    def __init__(self, vocab_size, n_embd, block_size, n_head, n_layer, dropout):
         super().__init__()
         self.block_size = block_size
 
@@ -174,7 +183,7 @@ class BigramLanguageModel(nn.Module):
 
         # NOVITA' (Passo 6): uno stack di n_layer transformer block.
         self.blocks = nn.Sequential(*[
-            Block(n_embd, n_head, block_size) for _ in range(n_layer)
+            Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)
         ])
         # Layer norm finale prima dell'output head (prassi nei GPT).
         self.ln_f = nn.LayerNorm(n_embd)

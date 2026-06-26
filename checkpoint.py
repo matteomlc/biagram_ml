@@ -63,7 +63,7 @@ def load_checkpoint(path, model_class, tokenizer_class, device):
     # Ricostruisci lo scheletro del modello e caricaci i pesi
     model = model_class(checkpoint["vocab_size"], checkpoint["n_embd"],
                         checkpoint["block_size"], checkpoint["n_head"],
-                        checkpoint["n_layer"])
+                        checkpoint["n_layer"], 0.0)
     model.load_state_dict(checkpoint["model_state"])
     model = model.to(device)
     model.eval()  # modalita' valutazione (utile per generare subito)

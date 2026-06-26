@@ -13,10 +13,11 @@ import torch
 # --- Iperparametri di training ---
 BATCH_SIZE = 32        # Quante sequenze processiamo in parallelo per step
 BLOCK_SIZE = 32        # Lunghezza del contesto (caratteri visti per predizione)
-N_EMBD = 32            # Dimensione della rappresentazione di ogni token (Passo 1)
+N_EMBD = 128           # Dimensione della rappresentazione di ogni token (Passo 1)
 N_HEAD = 4             # Numero di head di attention in parallelo (Passo 4)
 N_LAYER = 3            # Numero di transformer block impilati (Passo 6)
-MAX_STEPS = 10000      # Numero totale di training step
+DROPOUT = 0.2          # Frazione di neuroni spenti durante il training (regolarizzazione)
+MAX_STEPS = 30000      # Numero totale di training step
 EVAL_INTERVAL = 1000   # Ogni quanti step valutare e stampare la loss
 EVAL_ITERS = 200       # Su quanti batch mediare la loss di valutazione
 LEARNING_RATE = 1e-2   # Dimensione del passo nel gradient descent
@@ -28,10 +29,10 @@ TRAIN_SPLIT = 0.9      # Frazione di dati usata per il training (resto: validati
 SEED = 42              # Seed per risultati riproducibili
 
 # --- Tracciamento ---
-RUN_NOTES = "Passo 6 - transformer block impilati (mini-GPT completo)"  # descrizione del run
+RUN_NOTES = "Dropout 0.2 + n_embd 128 (anti-overfitting)"  # descrizione del run
 
 # --- Salvataggio modello ---
-CHECKPOINT_PATH = "modello_passo6.pt"   # dove salvare/caricare i pesi del modello
+CHECKPOINT_PATH = "modello_dropout.pt"   # dove salvare/caricare i pesi del modello
 
 # --- Generazione ---
 GEN_TOKENS_BEFORE = 200   # Caratteri da generare prima del training (gibberish)

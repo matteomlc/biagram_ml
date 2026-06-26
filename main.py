@@ -89,7 +89,7 @@ def main():
     dataset.summary()
 
     # --- Modello ---
-    model = BigramLanguageModel(tokenizer.vocab_size, config.N_EMBD, config.BLOCK_SIZE, config.N_HEAD, config.N_LAYER).to(device)
+    model = BigramLanguageModel(tokenizer.vocab_size, config.N_EMBD, config.BLOCK_SIZE, config.N_HEAD, config.N_LAYER, config.DROPOUT).to(device)
     print(f"\nParametri del modello: {model.num_params():,}\n")
 
     # --- Logger ---
