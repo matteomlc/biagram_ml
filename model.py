@@ -1,16 +1,23 @@
 """
-model.py — Il modello (PASSO 5)
-================================
+model.py — Il modello (PASSO 6 — mini-GPT completo)
+====================================================
 
-PASSO 5: FEED-FORWARD NETWORK.
+PASSO 6: TRANSFORMER BLOCK impilati, con RESIDUAL CONNECTION e LAYER NORM.
 
-Dopo che la multi-head attention ha fatto COMUNICARE i token (ognuno raccoglie
-informazione dagli altri), la feed-forward fa ELABORARE a ogni token, da solo,
-cio' che ha raccolto. E' il momento di "ragionamento individuale".
+Raggruppiamo multi-head attention + feed-forward in un "Block" riutilizzabile,
+e ne impiliamo N. Aggiungiamo i due elementi "infrastruttura":
+  - RESIDUAL CONNECTION: x = x + sotto_layer(x). Fa fluire il gradiente
+    all'indietro (evita il vanishing gradient) e permette reti profonde.
+  - LAYER NORM: normalizza i valori (media 0, varianza 1) prima di ogni
+    sotto-layer, per stabilita' durante l'addestramento.
 
-E' una piccola rete: due nn.Linear con una non linearita' (ReLU) in mezzo.
-Il primo espande la dimensione (x4), la ReLU permette di apprendere relazioni
-complesse, il secondo riporta a n_embd.
+Struttura di un block (stile "pre-norm"):
+    x = x + attention( layer_norm(x) )
+    x = x + feed_forward( layer_norm(x) )
+
+Con questo, l'architettura e' un Transformer decoder-only completo: la stessa
+di GPT, in miniatura. Da qui in poi la differenza con i modelli veri e' solo
+SCALA (piu' block, piu' dimensioni, piu' dati).
 """
 
 import torch
@@ -126,25 +133,51 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 
+class Block(nn.Module):
+    """
+    Un transformer block: multi-head attention + feed-forward,
+    con residual connection e layer norm attorno a ciascuno.
+
+    Stile "pre-norm": la layer norm si applica PRIMA del sotto-layer, e il
+    risultato si SOMMA all'input (residual).
+        x = x + attention( norm1(x) )
+        x = x + feed_forward( norm2(x) )
+    """
+
+    def __init__(self, n_embd, n_head, block_size):
+        super().__init__()
+        head_size = n_embd // n_head
+        self.sa = MultiHeadAttention(n_head, n_embd, head_size, block_size)
+        self.ffwd = FeedForward(n_embd)
+        # Due layer norm: una prima dell'attention, una prima della feed-forward.
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+
+    def forward(self, x):
+        # "x = x +" e' la RESIDUAL CONNECTION: somma l'input al risultato.
+        x = x + self.sa(self.ln1(x))      # attention con norm + residuo
+        x = x + self.ffwd(self.ln2(x))    # feed-forward con norm + residuo
+        return x
+
+
 class BigramLanguageModel(nn.Module):
     """
     Ora con un head di self-attention tra l'embedding e l'output head.
     """
 
-    def __init__(self, vocab_size, n_embd, block_size, n_head):
+    def __init__(self, vocab_size, n_embd, block_size, n_head, n_layer):
         super().__init__()
         self.block_size = block_size
 
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
 
-        # NOVITA' (Passo 4): multi-head attention al posto del singolo head.
-        # head_size = n_embd / n_head, cosi' la concatenazione torna a n_embd.
-        head_size = n_embd // n_head
-        self.sa_heads = MultiHeadAttention(n_head, n_embd, head_size, block_size)
-
-        # NOVITA' (Passo 5): la feed-forward, dopo l'attention.
-        self.ffwd = FeedForward(n_embd)
+        # NOVITA' (Passo 6): uno stack di n_layer transformer block.
+        self.blocks = nn.Sequential(*[
+            Block(n_embd, n_head, block_size) for _ in range(n_layer)
+        ])
+        # Layer norm finale prima dell'output head (prassi nei GPT).
+        self.ln_f = nn.LayerNorm(n_embd)
 
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -156,11 +189,10 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(pos)          # (T, n_embd)
         x = tok_emb + pos_emb                                 # (B, T, n_embd)
 
-        # NOVITA' (Passo 4): la multi-head attention. x esce arricchito.
-        x = self.sa_heads(x)                                  # (B, T, n_embd)
-
-        # NOVITA' (Passo 5): la feed-forward elabora cio' che l'attention ha raccolto.
-        x = self.ffwd(x)                                      # (B, T, n_embd)
+        # NOVITA' (Passo 6): lo stack di transformer block.
+        # Ogni block fa attention + feed-forward, con residual e layer norm.
+        x = self.blocks(x)                                    # (B, T, n_embd)
+        x = self.ln_f(x)                                      # layer norm finale
 
         logits = self.lm_head(x)                              # (B, T, vocab_size)
 

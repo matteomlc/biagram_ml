@@ -20,7 +20,7 @@ import os
 import torch
 
 
-def save_checkpoint(model, tokenizer, n_embd, block_size, n_head, path):
+def save_checkpoint(model, tokenizer, n_embd, block_size, n_head, n_layer, path):
     """
     Salva pesi + vocabolario + iperparametri in un unico file .pt
     """
@@ -31,6 +31,7 @@ def save_checkpoint(model, tokenizer, n_embd, block_size, n_head, path):
         "n_embd": n_embd,
         "block_size": block_size,
         "n_head": n_head,
+        "n_layer": n_layer,
     }
     torch.save(checkpoint, path)
     print(f"Modello salvato in '{path}'")
@@ -61,7 +62,8 @@ def load_checkpoint(path, model_class, tokenizer_class, device):
 
     # Ricostruisci lo scheletro del modello e caricaci i pesi
     model = model_class(checkpoint["vocab_size"], checkpoint["n_embd"],
-                        checkpoint["block_size"], checkpoint["n_head"])
+                        checkpoint["block_size"], checkpoint["n_head"],
+                        checkpoint["n_layer"])
     model.load_state_dict(checkpoint["model_state"])
     model = model.to(device)
     model.eval()  # modalita' valutazione (utile per generare subito)
