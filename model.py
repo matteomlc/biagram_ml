@@ -1,15 +1,16 @@
 """
-model.py — Il modello (PASSO 4)
+model.py — Il modello (PASSO 5)
 ================================
 
-PASSO 4: MULTI-HEAD ATTENTION.
+PASSO 5: FEED-FORWARD NETWORK.
 
-Invece di un solo head di self-attention, ne usiamo diversi in PARALLELO.
-Ogni head ha le sue matrici Q/K/V indipendenti e puo' specializzarsi su un
-tipo di relazione diverso tra i token. Gli output dei head vengono concatenati.
+Dopo che la multi-head attention ha fatto COMUNICARE i token (ognuno raccoglie
+informazione dagli altri), la feed-forward fa ELABORARE a ogni token, da solo,
+cio' che ha raccolto. E' il momento di "ragionamento individuale".
 
-Con n_embd=32 e 4 head: ogni head lavora con head_size = 32/4 = 8. Quattro
-specialisti da 8 invece di un tuttofare da 32, stesso budget totale.
+E' una piccola rete: due nn.Linear con una non linearita' (ReLU) in mezzo.
+Il primo espande la dimensione (x4), la ReLU permette di apprendere relazioni
+complesse, il secondo riporta a n_embd.
 """
 
 import torch
@@ -103,6 +104,28 @@ class MultiHeadAttention(nn.Module):
         return out
 
 
+class FeedForward(nn.Module):
+    """
+    La feed-forward network: elaborazione individuale di ogni token.
+
+    Due layer lineari con una ReLU in mezzo. Il primo espande la dimensione
+    (x4, prassi standard), la ReLU introduce la non linearita', il secondo
+    riporta a n_embd. Lavora su ogni posizione SEPARATAMENTE (non fa comunicare
+    i token tra loro: quello e' compito dell'attention).
+    """
+
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 4 * n_embd),   # espande
+            nn.ReLU(),                       # non linearita'
+            nn.Linear(4 * n_embd, n_embd),   # riporta a n_embd
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
 class BigramLanguageModel(nn.Module):
     """
     Ora con un head di self-attention tra l'embedding e l'output head.
@@ -120,6 +143,9 @@ class BigramLanguageModel(nn.Module):
         head_size = n_embd // n_head
         self.sa_heads = MultiHeadAttention(n_head, n_embd, head_size, block_size)
 
+        # NOVITA' (Passo 5): la feed-forward, dopo l'attention.
+        self.ffwd = FeedForward(n_embd)
+
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
@@ -132,6 +158,9 @@ class BigramLanguageModel(nn.Module):
 
         # NOVITA' (Passo 4): la multi-head attention. x esce arricchito.
         x = self.sa_heads(x)                                  # (B, T, n_embd)
+
+        # NOVITA' (Passo 5): la feed-forward elabora cio' che l'attention ha raccolto.
+        x = self.ffwd(x)                                      # (B, T, n_embd)
 
         logits = self.lm_head(x)                              # (B, T, vocab_size)
 
