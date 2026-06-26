@@ -1,22 +1,15 @@
 """
-model.py — Il modello (PASSO 3)
+model.py — Il modello (PASSO 4)
 ================================
 
-PASSO 3: aggiungiamo la SELF-ATTENTION (un singolo head).
+PASSO 4: MULTI-HEAD ATTENTION.
 
-Finora ogni token veniva predetto guardando solo se stesso. Ora ogni token
-puo' guardare i token PRECEDENTI e raccogliere informazione da loro, tramite
-il meccanismo Query / Key / Value (vedi DOCUMENTAZIONE.md sez. 8).
+Invece di un solo head di self-attention, ne usiamo diversi in PARALLELO.
+Ogni head ha le sue matrici Q/K/V indipendenti e puo' specializzarsi su un
+tipo di relazione diverso tra i token. Gli output dei head vengono concatenati.
 
-Flusso di un head di attention:
-  1. da ogni token ricava query, key, value (tre nn.Linear appresi)
-  2. punteggi = query . key  (prodotto scalare tra ogni coppia di token)
-  3. scala per 1/sqrt(head_size) e applica la MASCHERA CAUSALE (solo il passato)
-  4. softmax -> pesi di attenzione (sommano a 1)
-  5. output = media pesata dei value
-
-Questo e' il passo in cui, per la prima volta, la val perplexity dovrebbe
-SCENDERE: il modello inizia davvero a usare il contesto.
+Con n_embd=32 e 4 head: ogni head lavora con head_size = 32/4 = 8. Quattro
+specialisti da 8 invece di un tuttofare da 32, stesso budget totale.
 """
 
 import torch
@@ -83,21 +76,49 @@ class Head(nn.Module):
         return out
 
 
+class MultiHeadAttention(nn.Module):
+    """
+    Piu' head di self-attention in parallelo, i cui output sono concatenati.
+
+    Ogni head e' un'istanza della classe Head. Concatenando num_heads output
+    da head_size ciascuno, si torna a num_heads * head_size = n_embd.
+    """
+
+    def __init__(self, num_heads, n_embd, head_size, block_size):
+        super().__init__()
+        # Una lista di head indipendenti. nn.ModuleList registra correttamente
+        # i parametri di ciascun head (a differenza di una lista Python normale).
+        self.heads = nn.ModuleList([
+            Head(n_embd, head_size, block_size) for _ in range(num_heads)
+        ])
+        # Una proiezione lineare che "rimescola" gli output concatenati dei head.
+        self.proj = nn.Linear(num_heads * head_size, n_embd)
+
+    def forward(self, x):
+        # Esegue ogni head e concatena i risultati lungo l'ultima dimensione.
+        # Ogni head: (B, T, head_size). Concatenati: (B, T, num_heads*head_size).
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        # La proiezione finale ricombina le informazioni dei vari head.
+        out = self.proj(out)  # (B, T, n_embd)
+        return out
+
+
 class BigramLanguageModel(nn.Module):
     """
     Ora con un head di self-attention tra l'embedding e l'output head.
     """
 
-    def __init__(self, vocab_size, n_embd, block_size):
+    def __init__(self, vocab_size, n_embd, block_size, n_head):
         super().__init__()
         self.block_size = block_size
 
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
 
-        # NOVITA': un head di self-attention. Per ora head_size = n_embd,
-        # cosi' l'output dell'attention ha la stessa dimensione dell'input.
-        self.sa_head = Head(n_embd, n_embd, block_size)
+        # NOVITA' (Passo 4): multi-head attention al posto del singolo head.
+        # head_size = n_embd / n_head, cosi' la concatenazione torna a n_embd.
+        head_size = n_embd // n_head
+        self.sa_heads = MultiHeadAttention(n_head, n_embd, head_size, block_size)
 
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -109,8 +130,8 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(pos)          # (T, n_embd)
         x = tok_emb + pos_emb                                 # (B, T, n_embd)
 
-        # NOVITA': la self-attention. x esce arricchito col contesto.
-        x = self.sa_head(x)                                   # (B, T, n_embd)
+        # NOVITA' (Passo 4): la multi-head attention. x esce arricchito.
+        x = self.sa_heads(x)                                  # (B, T, n_embd)
 
         logits = self.lm_head(x)                              # (B, T, vocab_size)
 

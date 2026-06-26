@@ -89,7 +89,7 @@ def main():
     dataset.summary()
 
     # --- Modello ---
-    model = BigramLanguageModel(tokenizer.vocab_size, config.N_EMBD, config.BLOCK_SIZE).to(device)
+    model = BigramLanguageModel(tokenizer.vocab_size, config.N_EMBD, config.BLOCK_SIZE, config.N_HEAD).to(device)
     print(f"\nParametri del modello: {model.num_params():,}\n")
 
     # --- Logger ---
@@ -144,7 +144,7 @@ def main():
 
     # --- Salvataggio: log + pesi del modello ---
     logger.save()
-    checkpoint.save_checkpoint(model, tokenizer, config.N_EMBD, config.BLOCK_SIZE, config.CHECKPOINT_PATH)
+    checkpoint.save_checkpoint(model, tokenizer, config.N_EMBD, config.BLOCK_SIZE, config.N_HEAD, config.CHECKPOINT_PATH)
 
 
 if __name__ == "__main__":

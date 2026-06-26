@@ -4,8 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1afb6767-2f94-450e-950e-a1f543d22b5d" name="Changes" comment="Add positional embedding to the model">
+    <list default="true" id="1afb6767-2f94-450e-950e-a1f543d22b5d" name="Changes" comment="Add single-head self-attention">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoint.py" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoint.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -106,7 +109,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781872895098</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Add single-head self-attention">
+      <option name="closed" value="true" />
+      <created>1782464369217</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1782464369217</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -126,6 +137,7 @@
     <MESSAGE value="Added logger system" />
     <MESSAGE value="New text for train" />
     <MESSAGE value="Add positional embedding to the model" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add positional embedding to the model" />
+    <MESSAGE value="Add single-head self-attention" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add single-head self-attention" />
   </component>
 </project>
